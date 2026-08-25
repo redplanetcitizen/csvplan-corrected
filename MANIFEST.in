@@ -1,0 +1,5 @@
+include README.md
+include MODEL_NOTES.md
+include requirements.txt
+recursive-include csvplan_corrected/data *.csv
+recursive-include tests *.py
