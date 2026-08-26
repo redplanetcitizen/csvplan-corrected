@@ -1,36 +1,27 @@
 # csvplan faithful specification
 
+> **AUDIT HOLD. This file is provisional and not normative.** The source/code reconciliation in `CSVPLAN_RECONCILIATION_MATRIX.md` supersedes the implementation decisions below until the csvplan ambiguities have been adjudicated. In particular, the absence of a rule from the prose is not by itself evidence that the corresponding `csvplan.jl` behaviour is erroneous. `faithful.py` must be treated as an experimental reconstruction under audit, not as an established "more faithful" implementation.
+
 ## Status and scope
 
-This document fixes the source hierarchy and implementation requirements for the next revision of `csvplan-corrected`.
+This document records the earlier proposed source hierarchy and implementation requirements for a possible revision of `csvplan-corrected`. It is retained for provenance while the audit is in progress.
 
-The target is **a faithful implementation of Cockshott's New Harmony multi-year planner**, not a byte-for-byte reproduction of every behaviour of the historical Julia prototype. The historical prototype remains separately replayable through the legacy path.
+The intended target was **a reconstruction of Cockshott's New Harmony multi-year planner**, not a byte-for-byte reproduction of every behaviour of the historical Julia prototype. The historical prototype remains separately replayable through the legacy path.
 
-Frozen pre-revision snapshots were created on 2026-08-25/26 as branch `freeze-pre-faithful-2026-08-25` in:
+The normative status of all choices below is suspended until the reconciliation matrix assigns them a final adjudication.
 
-- `redplanetcitizen/csvplan-corrected`
-- `redplanetcitizen/NewHarmony_E_Corrected`
-- `redplanetcitizen/NewHarmony_Milestone_F_Corrected`
+## Source hierarchy (provisional, suspended)
 
-No changes to Milestone E or F are permitted until the faithful csvplan checkpoint defined below has passed.
-
-## Source hierarchy
-
-The reconstruction uses four witnesses with different roles:
+The earlier reconstruction used four witnesses with different roles:
 
 1. **Chapter 6, Theory of Optimal Planning**: consolidated theoretical statement, especially the multi-good extension, finite-horizon discussion, robust annual Harmony, and the nine-step investment algorithm.
 2. **Design for Julia implementation of the New Harmony algorithm**: detailed algorithmic specification, tensor stock dynamics, source-to-destination depreciation, positivity condition, and Harmony definitions.
-3. **Using csvplan.jl**: operational description of the actual Julia program: below-average-year processing, small-fraction adjustment, best preceding source year, three termination conditions, and automatic horizon extension.
-4. **`csvplan.jl` source**: executable witness used to resolve implementation details and to identify divergences/bugs. A behaviour present only in the source is not automatically normative.
+3. **Using csvplan.jl**: previously referenced operational documentation. A standalone primary copy is not currently present in the searchable audit bundle, so remembered contents are not to be used as evidence until the source is recovered.
+4. **`csvplan.jl` source**: executable witness.
 
-Precedence rule:
+The earlier precedence rules are suspended. The reconciliation audit now classifies each decision separately as concordance, implementation specialisation, textual variant, code-only, text-only, direct conflict, probable implementation defect, indeterminate, or our choice.
 
-- If Chapter 6 and Design agree, their requirement is normative.
-- If `Using csvplan.jl` explicitly documents an operational variant of the multi-good program, that variant is normative for the faithful multi-good controller unless it contradicts a physical/theoretical constraint stated explicitly in Chapter 6 or Design.
-- If the Julia source conflicts with an explicit theoretical requirement, preserve the theoretical requirement and record the source divergence as a legacy behaviour.
-- If a point is not determined by the texts, mark it as an implementation choice rather than attributing it to Cockshott.
-
-## Required mathematical core
+## Earlier proposed mathematical core
 
 ### Harmony
 
@@ -40,13 +31,11 @@ Use
 
 on the economically relevant domain.
 
-For each year, compute per-product fulfilment ratios from **net/final social output** and the corresponding target. Annual Harmony is the minimum per-product Harmony over all products with positive targets:
+For each year, compute per-product fulfilment ratios from **net/final social output** and the corresponding target. Annual Harmony was proposed as the minimum per-product Harmony over all products with positive targets:
 
 `H_t = min_i h(f_t,i / g_t,i)`.
 
-Products with zero target are not included in the ratio/minimum, but their net output must remain nonnegative.
-
-This corrects the Julia indexing error in which the last actual product can be dropped by applying `[1:end-1]` after the labour dimension has already disappeared.
+The reconciliation audit now treats the historical `[1:end-1]` behaviour separately under C02/C28 rather than silently correcting it.
 
 ### Within-period Leontief calculation
 
@@ -56,8 +45,6 @@ For final demand `f_t`, gross output is
 
 Investment produced in year `t` is part of final demand in year `t` and becomes productive capital from the start of year `t+1`.
 
-The Leontief inverse computes **gross output**, not net output.
-
 ### Capital representation
 
 Use the source-product × user-sector capital requirement matrix `C`, and a time-indexed capital-stock tensor `S[t,i,j]`.
@@ -66,179 +53,54 @@ Stock dynamics are
 
 `S[t+1,i,j] = (1 - d[i,j]) * S[t,i,j] + I[t,i,j]`.
 
-Capital feasibility is cell-specific. For any proposed gross output vector, the binding capital constraint is the minimum stock/required-capital ratio over the active `C[i,j]` cells; labour may impose a tighter bound.
+Capital feasibility is cell-specific; labour may impose a tighter bound.
 
-## Planning horizon
+## Earlier proposed planning horizon
 
-The user supplies an explicit planning horizon of `T` years through the labour/targets file.
-
-The computational horizon must be extended automatically by `depreciation_horizon` stationary continuation years:
+The user supplies an explicit planning horizon of `T` years through the labour/targets file. The earlier reconstruction proposed automatic extension by `depreciation_horizon` stationary continuation years:
 
 `T_compute = T + depreciation_horizon`.
 
-Default:
+Historical `csvplan.jl` uses `depreciation_horizon = 14`, repeats the final target/labour data in its extension, and reports only the original input horizon. Chapter 6 independently gives the example of optimising a five-year plan over a 19-year window with a 14-year industrial-capital horizon. The reconciliation audit separates the well-supported 5+14 finite-horizon principle from the code-only details of how shadow rows are generated.
 
-`depreciation_horizon = 14`.
+## Earlier proposed initial and terminal treatment
 
-For each continuation year:
+The prior specification removed the Julia-only preliminary rule `initialinvestmentlevel = 0.7`. **That decision is now withdrawn pending audit.** The 70% schedule is classified C14: code-only, not proven erroneous.
 
-- repeat the last explicit target vector;
-- repeat the last explicit labour availability;
-- keep the same technology and depreciation assumptions unless a later empirical extension explicitly supplies time-varying data.
+The prior Python terminal formalisation is likewise non-normative pending C19/B6 adjudication.
 
-Only the original `T` years are published as the requested plan. The continuation years exist to remove the artificial incentive to stop investing near the reported horizon.
+## Earlier proposed intertemporal controller
 
-This requirement reproduces the operational behaviour documented for `csvplan.jl` and the Chapter 6 recommendation that a good five-year plan with a 14-year industrial-capital horizon may be optimised over 19 years and results after year 5 disregarded.
+The earlier reconstruction used below-average destination years, a fixed `epsilon = 0.25 / depreciation_horizon`, best prior source year by positive overall-Harmony gain, mandatory inverse depreciation, post-transfer positivity, and termination if no feasible positive accumulation exists.
 
-## Initial and terminal treatment
+Each of these is now separated in the reconciliation matrix:
 
-### Initial capital
+- destination rule: C05;
+- epsilon: C07;
+- source-year search: C09;
+- overall-Harmony non-reduction: C10;
+- inverse depreciation: C11;
+- positivity: C12;
+- no-transfer termination: C23/C24.
 
-Start from the supplied capital-stock matrix. Non-terminal endogenous investment starts at zero.
+No combined controller is to be declared canonical until the one-factor-at-a-time tests are complete.
 
-Do **not** reproduce the Julia-only preliminary rule
+## Legacy versus reconstruction
 
-`initialinvestmentlevel = 0.7`
+The repository preserves three analytically distinct objects:
 
-unless running the legacy replay. This 70% preliminary replacement schedule is present in the source but is not part of the nine-step algorithm and is not documented in `Using csvplan.jl`.
+- **Cockshott `csvplan.jl` original**: immutable historical prototype sample;
+- **Python `legacy.py`**: verified numerical replay of the historical implementation;
+- **Python `faithful.py`**: experimental reconstruction currently under audit.
 
-### Final computational year
+The verified relation is:
 
-Apply the Step-1 requirement at the **final computational year**, not the final published year:
+`Cockshott csvplan.jl ≈ Python legacy.py`
 
-- gross output should use the available workforce as fully as physical capital permits;
-- sufficient replacement investment should be included to compensate for depreciation during that year;
-- the final target remains a scaled version of the target ray.
+The reconstruction's divergence is an object of study, not evidence of greater fidelity.
 
-The corrected Python terminal equation may be retained as an exact algebraic implementation of this requirement, but it must be labelled a corrective formalisation rather than an exact replay of the Julia formula. Its numerical effect must be tested separately against the Julia legacy path.
+## Audit checkpoint
 
-## Intertemporal controller
+All further csvplan work is governed by `CSVPLAN_RECONCILIATION_MATRIX.md`.
 
-### Destination years
-
-The multi-good program is to process **years whose annual Harmony is below the current mean Harmony**. This follows `Using csvplan.jl` and the actual `csvplan.jl` loop.
-
-Do not use the current Python rule "sort every year by Harmony and select the first year for which an admissible correction exists" as the canonical faithful controller.
-
-The generic nine-step description's "select the year with the lowest harmony" is retained as the scalar/general algorithm statement; the documented multi-good `csvplan.jl` controller is the operational rule implemented here.
-
-### Move toward mean Harmony
-
-For a below-average destination year, invert the Harmony function to obtain the fulfilment corresponding to current mean Harmony. Compute the gap from the destination's current fulfilment, then attempt only a small fraction of that gap.
-
-The faithful multi-good default uses the fixed Julia operational value
-
-`epsilon = 0.25 / depreciation_horizon`.
-
-With the default horizon 14:
-
-`epsilon = 1/56 ≈ 0.017857142857`.
-
-Remove adaptive step growth/shrinkage/backtracking from the canonical faithful mode.
-
-Chapter 6 also proposes, "as a first suggestion", the scalar rule `epsilon = 1/(1 + 1/Delta)`. With a matrix of cell-specific depreciation rates there is no uniquely specified scalar `Delta`; therefore this formula is retained as a documented theoretical alternative, not silently substituted for the operational multi-good default.
-
-### Required destination capital
-
-Calculate the additional capital needed to support the attempted destination fulfilment from the target gross output and `C`. Negative gaps are clipped to zero.
-
-### Candidate source years
-
-Consider all years strictly preceding the destination year.
-
-For each source year:
-
-1. undo the relevant source-to-destination depreciation so that the investment produced at the source yields the required surviving capital at the destination;
-2. add the proposed investment in the source year;
-3. propagate the capital-stock path forward;
-4. recompute gross outputs, net outputs, per-product Harmony, annual Harmony and total/mean Harmony;
-5. reject any candidate violating flow balance, labour, capital, or nonnegative net-output constraints.
-
-Choose the preceding source year that produces the greatest positive improvement in overall Harmony.
-
-Unlike the historical Julia default (`inversedepreciateinvestments = false`), source-to-destination depreciation compensation is mandatory because Chapter 6 and Design explicitly require it.
-
-### Positivity
-
-The nonnegative-net-output test must be performed on the **candidate scenario after the proposed transfer**, not on the unmodified source scenario. The Julia pre-candidate `posflags` test is treated as a bug.
-
-### Acceptance
-
-Accept a capital transfer only if total/mean Harmony across the computational horizon strictly increases within numerical tolerance.
-
-If no preceding source year yields a feasible positive-Harmony improvement for the current correction attempt, terminate with the documented no-feasible-accumulation condition rather than switching to an adaptive-step search.
-
-## Termination conditions
-
-The faithful controller must terminate under each of the three conditions documented in `Using csvplan.jl`:
-
-1. maximum attempt/iteration count reached;
-2. coefficient of variation of annual Harmony falls below the configured threshold;
-3. no feasible accumulation can be found that raises overall Harmony.
-
-Default Julia values retained unless tests justify a separately labelled parameterisation:
-
-- `max_iterations = 3000`
-- `harmony_cv_threshold = 0.034`
-
-The reason for condition 3 must be reportable; for example, the destination may be labour-bound rather than capital-bound.
-
-## Input contract
-
-The canonical solver continues to require four input tables:
-
-1. input-output flow table;
-2. initial capital-stock table;
-3. cell-specific depreciation-rate table;
-4. labour-supply and final-target table.
-
-`A`, `C`, Leontief inverse, stock trajectories, investments, fulfilments and Harmonies are derived internally.
-
-## Legacy versus faithful behaviour
-
-The repository must preserve three analytically distinct objects:
-
-- **Julia original**: Cockshott's historical `csvplan.jl` source;
-- **Python legacy replay**: reproduction of the historical implementation, including source-specific quirks where needed for comparison;
-- **Python faithful corrected**: source-based New Harmony implementation with documented prototype bugs corrected.
-
-Expected validation relation:
-
-`Julia original ≈ Python legacy replay`
-
-followed by a controlled comparison
-
-`Python legacy replay != Python faithful corrected`
-
-where every material divergence must map to an explicit item in this specification.
-
-## Required tests before Milestone E may be changed
-
-The faithful csvplan checkpoint requires dedicated tests for:
-
-1. automatic `T + depreciation_horizon` extension;
-2. stationary continuation of targets and labour;
-3. annual Harmony as the minimum over **all** positive-target products;
-4. below-average destination-year processing;
-5. fixed `epsilon = 0.25 / depreciation_horizon` in faithful mode;
-6. selection of the preceding source year with greatest positive total-Harmony gain;
-7. mandatory inverse depreciation from source to destination;
-8. post-transfer nonnegative net output;
-9. rejection of flow/labour/capital infeasibility;
-10. coefficient-of-variation termination;
-11. maximum-iteration termination;
-12. no-feasible-accumulation termination;
-13. final computational-year full-employment/replacement treatment;
-14. no preliminary 70% replacement floor in faithful corrected mode;
-15. iteration-level comparison against Julia/legacy on the demonstration data.
-
-Only after these tests pass and the Julia/legacy comparison is documented may the controller be ported into Milestone E Corrected.
-
-## Open specification points
-
-The following are not uniquely determined by the sources and must remain explicitly labelled implementation choices:
-
-- how to map the scalar Chapter 6 `Delta` in the suggested epsilon formula to a heterogeneous depreciation matrix `d[i,j]`;
-- whether several source years may jointly finance one destination correction in a single iteration (the documented Julia program chooses one best preceding year per attempt);
-- exact numerical tolerance conventions;
-- the exact matrix formula used to implement Step 1 in the final computational year, provided the full-employment/replacement requirement is satisfied and the choice is documented.
+The next task is to execute Stage A one-factor-at-a-time tests beginning with the accounting issue C13 (matrix row-vector investment subtraction versus Julia scalar linear-index broadcast), while holding every other historical behaviour fixed.
