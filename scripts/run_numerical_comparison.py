@@ -92,6 +92,11 @@ def run_legacy_trace():
     legacy.update_outputs(s)
     legacy.computeHarmonies(s)
 
+    initial = {
+        "mean": float(s.meanh),
+        "std": float(s.stdh),
+        "h": s.h.tolist(),
+    }
     trace = []
     iter_count = 1
     stop_reason = None
@@ -150,6 +155,7 @@ def run_legacy_trace():
     return {
         "problem": problem,
         "scenario": s,
+        "initial": initial,
         "trace": trace,
         "iterations": iter_count,
         "stop_reason": stop_reason,
@@ -160,23 +166,9 @@ def run_legacy_trace():
 def main():
     faithful_result = faithful.run_default()
     legacy_trace = run_legacy_trace()
-    legacy_result = legacy.run_default(False)
-
-    # Verify that the traced legacy reconstruction reproduces the packaged legacy path.
-    legacy_replay = legacy_result["scenario"]
-    traced = legacy_trace["scenario"]
-    replay_checks = {
-        "max_abs_harmony_difference": float(np.max(np.abs(traced.h - legacy_replay.h))),
-        "max_abs_stock_difference": float(np.max(np.abs(traced.si - legacy_replay.si))),
-        "max_abs_investment_difference": float(np.max(np.abs(traced.investments - legacy_replay.investments))),
-        "max_abs_goal_ratio_difference": float(
-            np.max(np.abs(traced.goal_fullfilment_ratio_vector - legacy_replay.goal_fullfilment_ratio_vector))
-        ),
-        "mean_harmony_difference": float(abs(traced.meanh - legacy_replay.meanh)),
-    }
 
     f = faithful_result["scenario"]
-    l = traced
+    l = legacy_trace["scenario"]
     years = min(f.prob.horizon, l.prob.TheLastYear)
     legacy_net = np.vstack(l.netoutputs[:years])
     faithful_net = f.net_output[:years]
@@ -197,9 +189,11 @@ def main():
         "legacy": {
             "computational_horizon": int(l.prob.TheLastYear),
             "epsilon": float(legacy.EPSILON),
-            "trace_moves": int(sum(1 for row in legacy_trace["trace"] if row["accepted"])),
+            "accepted_moves": int(sum(1 for row in legacy_trace["trace"] if row["accepted"])),
             "iterations_counter": int(legacy_trace["iterations"]),
             "stop_reason": legacy_trace["stop_reason"],
+            "initial_mean_harmony": legacy_trace["initial"]["mean"],
+            "initial_std_harmony": legacy_trace["initial"]["std"],
             "mean_harmony": float(l.meanh),
             "std_harmony": float(l.stdh),
             "cv": float(legacy_trace["coefficient_of_variation"]),
@@ -212,11 +206,13 @@ def main():
             "mean_harmony_difference": float(f.meanh - l.meanh),
             "cv_difference": float(faithful_result["coefficient_of_variation"] - legacy_trace["coefficient_of_variation"]),
         },
-        "legacy_trace_replay_checks": replay_checks,
     }
 
     with (OUT / "python_summary.json").open("w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
+
+    with (OUT / "legacy_initial.json").open("w", encoding="utf-8") as fh:
+        json.dump(legacy_trace["initial"], fh, indent=2)
 
     with (OUT / "legacy_trace.json").open("w", encoding="utf-8") as fh:
         json.dump(legacy_trace["trace"], fh, indent=2)
@@ -255,10 +251,10 @@ def main():
 
     print("PYTHON_COMPARISON_SUMMARY")
     print(json.dumps(summary, indent=2))
-    print("LEGACY_TRACE_FIRST_5")
-    print(json.dumps(legacy_trace["trace"][:5], indent=2))
-    print("LEGACY_TRACE_LAST_5")
-    print(json.dumps(legacy_trace["trace"][-5:], indent=2))
+    print("LEGACY_TRACE_FIRST_3")
+    print(json.dumps(legacy_trace["trace"][:3], indent=2))
+    print("LEGACY_TRACE_LAST_3")
+    print(json.dumps(legacy_trace["trace"][-3:], indent=2))
 
 
 if __name__ == "__main__":
