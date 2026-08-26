@@ -12,6 +12,7 @@ moves are attempted.
 import importlib.util
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 
@@ -23,6 +24,7 @@ spec = importlib.util.spec_from_file_location("csvplan_stage_a_base", BASE)
 if spec is None or spec.loader is None:
     raise RuntimeError("cannot load Stage A base module")
 m = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = m
 spec.loader.exec_module(m)
 
 OUT = Path("comparison/stage_a")
