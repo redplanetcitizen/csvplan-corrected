@@ -3,6 +3,8 @@ name: Numerical comparison faithful legacy Julia
 on:
   push:
     branches: [csvplan-faithful-work]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
