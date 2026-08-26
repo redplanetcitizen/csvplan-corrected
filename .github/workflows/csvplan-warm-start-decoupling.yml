@@ -1,0 +1,28 @@
+name: csvplan warm-start decoupling audit
+
+on:
+  push:
+    branches: [csvplan-faithful-work]
+  workflow_dispatch:
+
+jobs:
+  warm-start-decoupling:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Run warm-start decoupling audit
+        run: python scripts/run_csvplan_warm_start_decoupling.py
+      - name: Run csvplan tests
+        run: python -m unittest discover -s tests -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csvplan-warm-start-decoupling-audit
+          path: comparison/warm_start_decoupling/
+          if-no-files-found: error
