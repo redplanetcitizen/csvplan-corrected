@@ -1,6 +1,6 @@
 # csvplan reconstruction specification
 
-> **STATUS: AUDITED BUT NOT YET FINAL.** The residual code-only choices are now adjudicated. The remaining core-controller question is C26, the multi-good additional-capital update, plus the engineering question of an endogenous feasible initializer. Until those are closed, `faithful.py` is an experimental reconstruction and must not be described as the definitive Cockshott implementation.
+> **STATUS: SOURCE/CODE ADJUDICATION COMPLETE FOR THE REFERENCE PROFILE.** C14 and the residual code-only controls have been classified and C26 has been closed as a retention decision. The next task is implementation: replace the older provisional `faithful.py` semantics with a provenance-explicit reference reconciled module and rerun the full numerical gate. This specification does not erase the distinction between the historical prototype, the printed New Harmony procedure, and our completion policies.
 
 ## 1. Objects kept distinct
 
@@ -8,49 +8,35 @@ The repository contains three analytically different objects.
 
 1. **Cockshott `csvplan.jl` original**: immutable historical prototype sample.
 2. **`legacy.py`**: verified Python numerical replay of the historical prototype.
-3. **reconciled reconstruction**: a source-adjudicated implementation target that corrects confirmed defects and follows explicit textual rules where the matrix prototype conflicts with them.
+3. **reference reconciled reconstruction**: corrects confirmed defects, follows explicit textual prescriptions where the prototype conflicts with them, and visibly labels executable choices not uniquely fixed by the text.
 
-The valid historical relation is:
-
-`Cockshott csvplan.jl ≈ Python legacy.py`.
-
-A different numerical result from the reconciled reconstruction is not evidence of greater fidelity by itself. Every divergence must be tied to an adjudicated source/code decision.
+The valid historical relation is `csvplan.jl ≈ legacy.py`. A different numerical result from the reconciled reconstruction is not evidence of greater fidelity by itself.
 
 ## 2. Evidence and precedence
 
-The reconstruction uses these witnesses:
+Primary witnesses used in the adjudication:
 
 - Chapter 6, `Theory of Optimal Planning`;
 - `Design for Julia implementation of the New Harmony algorithm`;
-- scalar `harmony2.jl` where it illuminates the written procedure;
+- scalar `harmony2.jl` where it illuminates the printed procedure;
 - matrix `csvplan.jl` as executable historical witness.
 
-The standalone operational document previously remembered as `Using csvplan.jl` is not present in the current verified source bundle and contributes no evidence until recovered.
+Decision precedence is row-specific:
 
-Decision precedence is row-specific, not a blanket hierarchy:
+- a confirmed programming defect is corrected when the surrounding model and text identify the intended object;
+- an explicit textual algorithmic prescription prevails over a conflicting active prototype path, while the latter remains historically replayable;
+- code-only values remain historical/reproducibility parameters and are not promoted to theoretical constants;
+- where the text is indeterminate, the directly witnessed matrix specialization is retained unless a reconstruction is explicitly chosen and labelled.
 
-- explicit text plus compatible local semantics prevail over a confirmed programming defect;
-- explicit text prevails for a direct algorithmic prescription when the matrix prototype implements a conflicting active path, while the historical path remains replayable;
-- code-only values are preserved in the historical profile but are not promoted to theoretical constants;
-- unresolved choices are labelled reconstruction choices, not silently attributed to Cockshott.
+See `CSVPLAN_RECONCILIATION_MATRIX.md`, `CSVPLAN_ADJUDICATION_STATUS.md`, `CSVPLAN_RESIDUAL_CODE_ONLY_ADJUDICATION.md`, and `CSVPLAN_C26_ADJUDICATION.md`.
 
-The current adjudication is recorded in `CSVPLAN_RECONCILIATION_MATRIX.md`, `CSVPLAN_ADJUDICATION_STATUS.md`, and `CSVPLAN_RESIDUAL_CODE_ONLY_ADJUDICATION.md`.
-
-## 3. Mathematical core fixed by the sources
+## 3. Mathematical core
 
 ### 3.1 Fractional Harmony
 
-Use
+Use `h(x) = x / (1.1 + x)`.
 
-`h(x) = x / (1.1 + x)`
-
-on the economically relevant domain.
-
-For a year `t`, compute fulfilment by product from net/final social output and positive plan targets. Robust annual Harmony is
-
-`H_t = min_i h(f[t,i] / g[t,i])`
-
-over products with positive targets. Labour is a constraint, not a final product in the Harmony minimum.
+For each year, compute fulfilment ratios from net/final social output and positive plan targets. Robust annual Harmony is the minimum product Harmony over **all** positive-target final products. Labour is a constraint, not a final product in this minimum.
 
 ### 3.2 Within-period Leontief calculation
 
@@ -58,206 +44,204 @@ For final demand `f_t`, gross output is
 
 `o_t = (I - A)^-1 f_t`.
 
-Investment produced in year `t` belongs to final demand in that year and becomes productive capital from the start of year `t+1`.
+Investment produced in year `t` belongs to final demand in that year and becomes productive capital from `t+1`.
 
 ### 3.3 Capital stocks
 
-Use source-product × user-sector capital requirement matrix `C` and time-indexed stock tensor `S[t,i,j]`.
-
-The stock identity is
+Use source-product × user-sector capital requirements `C` and stock tensor `S[t,i,j]` with
 
 `S[t+1,i,j] = (1 - d[i,j]) * S[t,i,j] + I[t,i,j]`.
 
-Capital feasibility is cell-specific. Labour provides an additional aggregate constraint and the most restrictive condition determines feasible scale.
+Capital feasibility is cell-specific; labour is an additional aggregate constraint.
 
-### 3.4 Source-to-destination investment
+### 3.4 Candidate transfers
 
-Investment shifted from a source year to a later destination must be adjusted so that the amount arriving at the destination is the required surviving capital after intervening depreciation. Candidate transfers must be evaluated on the **candidate** state, and no accepted transfer may create negative net final goods in the source year.
+Investment shifted from a preceding source year to a later destination must be inverse-adjusted so that the amount arriving at the destination equals the required surviving capital under the stock recurrence.
 
-An accepted move must strictly improve total/mean Harmony within numerical tolerance.
+Candidate-state net outputs, not the pre-transfer state, determine non-negativity. An accepted move must strictly increase total/mean Harmony within numerical tolerance.
 
-## 4. Intertemporal destination rule
+## 4. Intertemporal destination and source
 
-Design, Chapter 6, and scalar `harmony2.jl` explicitly prescribe selecting the year with the **lowest Harmony**. The active sequential-below-mean scan in `csvplan.jl` is therefore historical behavior, not the source-reconciled destination rule.
+Design, Chapter 6, and scalar `harmony2.jl` prescribe selecting the year with the **lowest Harmony**. The active sequential-below-mean scan in `csvplan.jl` is historical prototype behavior, not the reference reconciled destination rule.
 
-The reconciled controller must begin an iteration from the globally lowest-Harmony year.
+Reference rule:
 
-If that year has no positive transfer, the text does not uniquely specify the completion rule. A reconciled implementation may inspect subsequent years in ascending Harmony order and terminate only after a full failed pass. This is an explicit `our_choice` local-search certificate and must be identified as such in provenance output.
+1. begin with the globally lowest-Harmony year;
+2. consider only source years strictly preceding it;
+3. choose the source producing the largest positive total/mean-Harmony gain among feasible candidates.
 
-## 5. Finite planning horizon
+If the worst year is blocked, the text does not uniquely prescribe a completion rule. Two provenance-labelled options are admissible:
 
-The published/input horizon is `T`. The computational horizon may extend beyond `T` to prevent artificial terminal disinvestment. Chapter 6 explicitly gives the example of a good five-year plan evaluated over a nineteen-year window when industrial fixed capital has a fourteen-year horizon.
+- `historical_first_blocked`: terminate immediately;
+- `ranked_full_pass`: try subsequent years in ascending Harmony order and terminate only after a full failed pass. This is **our completion rule**, not an attributed Cockshott step.
 
-This source-supported finite-horizon principle does **not** uniquely determine the economic data in the shadow years.
+The reproducible reference run must state which option is active.
 
-Therefore a reconstructed solver must distinguish:
+## 5. Finite planning horizon and shadow continuation
+
+The published horizon is `T`; the computational horizon may extend beyond `T` to prevent artificial terminal disinvestment. Chapter 6 explicitly gives the five-year plus fourteen-year example, producing a nineteen-year calculation window.
+
+The economic content of shadow rows is not uniquely fixed by that principle. Therefore output must distinguish:
 
 - `published_horizon`;
 - `computational_horizon`;
 - `continuation_policy`.
 
-`repeat_last` reproduces the matrix prototype's policy of holding the last explicit targets and labour constant. It is a historical/reproducibility policy, not a theoretical invariant. Other continuation scenarios must be supplied explicitly and recorded.
+`repeat_last` reproduces the matrix prototype's continuation of the final explicit targets and labour. It is a reproducibility/boundary policy, not a theoretical invariant. The residual audit shows shadow assumptions materially affect published-period results.
 
-## 6. Preliminary investment / warm start
+## 6. C14: preliminary investment / warm start
 
 ### 6.1 Historical fact
 
-Matrix `csvplan.jl` sets
-
-`initialinvestmentlevel = 0.7`
-
-and preassigns 70% of replacement investment in every nonterminal computational year before iterative search.
+Matrix `csvplan.jl` uses `initialinvestmentlevel = 0.7` and preassigns 70% of replacement investment before iterative search.
 
 ### 6.2 Source status
 
-The available nine-step New Harmony procedure does not state a uniform preliminary replacement fraction. It initializes the stock path by depreciation and then schedules investment endogenously through the intertemporal correction step.
+The verified nine-step procedure does not state a uniform preliminary percentage. It starts from depreciated initial stocks and then shifts/schedules investment endogenously.
 
 ### 6.3 Audit result
 
-The 70% rule is not an innocuous speed optimization. The local search is materially path-dependent on the preliminary capital schedule. Zero or low preload does not bootstrap to a comparable full-horizon state; high preload can itself trigger the CV stopping rule. The value 0.70 is also not uniquely optimal on the demonstration problem.
+The preload is not an innocuous acceleration parameter. It materially determines the stock path and the basin of the local search. Zero preload does not bootstrap to a comparable solution, high preload can itself satisfy the CV rule, and 0.70 is neither unique nor numerically dominant.
 
-### 6.4 Specification
+**Classification: code-only structural warm start / finite-horizon boundary condition.**
 
-The warm start has the final classification:
+### 6.4 Reference rule
 
-**code-only structural initialization / finite-horizon boundary condition.**
+There is no source-justified universal warm-start percentage.
 
-Consequences:
+For the reproducible reference demonstration, retain `0.70` only as the named preset
 
-- historical replay: use 0.70 exactly and historical propagation;
-- reconciled reconstruction: warm-start policy must be explicit and provenance-labelled;
-- no fixed percentage may be described as a Cockshott theoretical constant;
-- if a nonzero preliminary schedule is used in reconciled mode, propagate it with the exact stock recurrence;
-- a zero warm start must not be advertised as equivalent to the matrix prototype, because the current local search does not reliably bootstrap from it;
-- a future endogenous initializer is permitted only as a separately specified and audited reconstruction subproblem.
+`warm_start_policy = historical_matrix_warm_start`
 
-There is therefore **no scientifically justified universal numeric default for the reconciled warm-start percentage at this checkpoint**.
+so that the reconstruction does not smuggle in a new initializer. In reconciled mode the nonzero preload must propagate with the exact stock recurrence and its value must be machine-visible and configurable.
 
-## 7. Numerical controls
+A zero warm start is not equivalent to the historical matrix procedure. A future endogenous feasible initializer is allowed only as a separately specified reconstruction extension.
 
-### 7.1 Epsilon
+## 7. C26: multi-good additional-capital update
 
-The historical matrix preset is
+Historical `csvplan.jl` uses
+
+`additional_capital = current_stock * scale_increment`.
+
+The verified text gives the economic purpose of the correction but does not print a unique multi-good matrix update.
+
+The C26 audit compared:
+
+- historical stock-proportional update;
+- a Leontief/`C` coefficient-increment reconstruction;
+- a required-stock-gap reconstruction.
+
+Results:
+
+| C26 rule | mean H | CV | min H |
+|---|---:|---:|---:|
+| historical stock-proportional | 0.498578600 | 0.037022495 | 0.433778848 |
+| coefficient increment | 0.502157617 | 0.038475276 | 0.436141212 |
+| required-stock gap | 0.337716070 | 0.328955630 | 0.172411440 |
+
+The coefficient reconstruction improves mean and minimum Harmony but worsens CV; it does not strictly dominate. The required-gap version fails to admit the first transfer. Performance therefore supplies no basis for silently replacing the executable witness.
+
+**Source status: indeterminate. Reference implementation decision: retain the historical stock-proportional update as `historical_matrix_specialization`.**
+
+This is a provenance-labelled implementation specialization, not a theoretical New Harmony invariant. Alternative C26 formulas remain experimental profiles.
+
+## 8. Numerical controls
+
+### 8.1 Epsilon
+
+Historical matrix preset:
 
 `epsilon = 0.25 / depreciation_horizon`.
 
-The text gives
+Printed first suggestion:
 
-`epsilon = 1 / (1 + 1/Delta)`
+`epsilon = 1 / (1 + 1/Delta)`.
 
-only as a first suggestion. For a depreciation rate `Delta = 1/14`, this gives `1/15`.
+Expose epsilon through named policy plus numeric resolved value. Performance interaction does not identify an authorial optimum.
 
-Both are named presets, not universal constants:
+### 8.2 Harmony CV threshold
 
-- `historical_matrix`: `0.25/H`;
-- `text_first_suggestion`: `1/(1+1/Delta)`;
-- explicit numeric epsilon: caller-supplied.
+The text says termination below “some threshold”. Matrix `.034` and scalar `.01` are implementation values. Expose `harmony_cv_threshold`; `.034` is only the historical matrix preset.
 
-The audit found interaction effects, so performance cannot be used to infer authorial priority.
+### 8.3 Maximum iterations
 
-### 7.2 Harmony CV threshold
+Expose `max_iterations` as a computational safeguard. `3000` is the historical matrix preset.
 
-The text specifies termination below “some threshold”. Matrix `.034` and scalar `.01` are implementation values.
+Every result must report accepted moves, attempted moves/candidates, stop reason, CV threshold, epsilon and max-iteration value.
 
-Expose `harmony_cv_threshold`. Historical matrix replay uses `.034`. A reconciled run must report the selected threshold.
+## 9. Depreciation horizon
 
-### 7.3 Maximum iterations
+`depreciation_horizon = 14` is a demonstration/planning-window value consistent with the Chapter 6 finite-horizon example. Actual stock depreciation remains cell-specific.
 
-Expose `max_iterations` as a computational safeguard. Historical matrix replay uses `3000`. It is not part of the economic model.
+Expose the horizon. Do not replace heterogeneous depreciation rates by `1/14` merely because the shadow window is fourteen years.
 
-Every result must report accepted moves, attempted moves/candidates, stop reason, CV threshold, epsilon, and maximum-iteration setting.
+## 10. Profiles
 
-## 8. Depreciation horizon
+### 10.1 Historical matrix replay
 
-`depreciation_horizon = 14` is a documented demonstration/planning-window value, not a universal depreciation law. The actual capital-stock recurrence uses the cell-specific depreciation matrix.
+Implemented by `legacy.py`; preserve the executable witness exactly, including quirks required for replay:
 
-Expose the horizon as a parameter. The historical/demo profile uses 14. Never replace heterogeneous depreciation rates by `1/14` merely because the shadow window is fourteen years.
-
-## 9. Profiles
-
-### 9.1 Historical matrix replay profile
-
-This profile is implemented by `legacy.py` and preserves the original executable witness, including behavior that the source audit later identifies as defective or conflicting when necessary for numerical replay.
-
-Key operational controls:
-
-- preliminary warm start = 0.70;
-- historical preliminary stock propagation;
-- shadow continuation = `repeat_last`;
-- active historical matrix destination/stop semantics;
+- warm start 0.70 with historical propagation;
+- `repeat_last` shadow continuation;
+- historical sequential destination/stop semantics;
 - inverse-depreciation default off;
-- epsilon = `0.25/H`;
-- CV threshold = `.034`;
-- maximum iteration counter = `3000`.
+- epsilon `.25/H`;
+- CV threshold `.034`;
+- maximum iteration counter `3000`.
 
-### 9.2 Reconciled reconstruction profile
+### 10.2 Reference reconciled profile
 
-Source-supported/adjudicated invariants:
+Fixed source-adjudicated core:
 
-- vector-correct net-output accounting;
-- all positive-target products included in robust annual Harmony;
+- vector-correct investment/net-output accounting;
+- all positive-target products in robust annual Harmony;
 - candidate-state non-negativity;
 - exact stock/depreciation chronology;
 - global-lowest destination;
-- preceding source years only;
-- accepted move must increase total/mean Harmony;
+- preceding sources only;
+- best positive source by total/mean-Harmony gain;
+- accepted moves strictly improve total/mean Harmony;
 - Leontief within-period accounting and physical capital/labour feasibility.
 
-Explicit, provenance-labelled controls:
+Provenance-labelled reproducibility controls:
 
-- `warm_start_policy` and any warm-start level;
-- `continuation_policy` for shadow years;
-- `epsilon_policy` / epsilon;
-- `harmony_cv_threshold`;
-- `max_iterations`;
-- `depreciation_horizon`;
-- `blocked_destination_policy`, where `ranked_full_pass` is currently an `our_choice` completion rule.
+- `warm_start_policy = historical_matrix_warm_start`, reference level `0.70`, configurable;
+- `continuation_policy = repeat_last` for the reference demonstration, configurable;
+- `epsilon_policy = historical_matrix` for the reference demonstration, configurable;
+- `harmony_cv_threshold = 0.034` and `max_iterations = 3000` only as declared historical numerical presets;
+- `depreciation_horizon = 14` only as declared demonstration preset;
+- `capital_update_policy = historical_matrix_specialization` for C26;
+- explicit `blocked_destination_policy`.
 
 A reconciled result is invalid for publication if these provenance fields are absent.
 
-## 10. Results supporting the profile split
+## 11. Numerical checkpoints
 
 Historical baseline:
 
 - mean H `0.483594243`;
 - CV `0.048835808`;
-- minimum H `0.402582327`.
+- min H `0.402582327`.
 
-P3 cumulative audit, retaining 70% preload and matrix epsilon while applying adjudicated accounting/depreciation changes and global-lowest destination:
+P3 cumulative source-reconciled checkpoint, with historical 70% preload and matrix epsilon held fixed during interaction testing:
 
 - mean H `0.498578600`;
 - CV `0.037022495`;
-- minimum H `0.433778848`.
+- min H `0.433778848`.
 
-P3 strictly dominates the historical baseline on these three metrics.
+P3 strictly dominates the historical baseline on these three metrics, but the result remains preload-sensitive.
 
-The preload sensitivity study then shows why this does not identify the 70% value. With historical preliminary timing, preload 0.80 reaches mean H `0.500223`, CV `0.035534`, minimum H `0.442186`, strictly dominating 0.70. With exact timing and additional decoupling controls, preload 0.90 maximizes tested mean H while 1.20 minimizes CV and maximizes worst-year Harmony, but the latter stops after one endogenous move. The preload is therefore a path/boundary parameter, not a recovered optimum.
-
-## 11. Remaining open core issue: C26
-
-The available source material does not print a unique multi-good formula for the additional-capital matrix used to move the destination toward mean Harmony.
-
-Historical `csvplan.jl` uses a construction proportional to current destination stock:
-
-`additional_capital = current_stock * scale_increment`.
-
-A formula such as
-
-`max(C * target_gross - current_stock, 0)`
-
-may be economically attractive, but at present it is a reconstruction unless a primary source is found. C26 therefore remains `INDETERMINATE / IMPLEMENTATION SPECIALISATION`.
-
-No default solver should be promoted as final until C26 is either retained explicitly as the historical specialization or replaced by a separately justified reconstruction with comparison evidence.
+The C14 historical-timing sweep shows 0.80 strictly dominating 0.70 on this dataset. The decoupled audit produces different best preload values for mean, CV and minimum Harmony. These findings establish that 0.70 is not an identified optimum; they do not authorize retuning the reference preset.
 
 ## 12. Acceptance gate before E/F
 
-Before modifying the empirical E repository, csvplan must satisfy all of the following:
+Source/code adjudication is complete enough to implement the reference profile. E/F remain frozen until the implementation gate passes:
 
 1. `csvplan.jl ↔ legacy.py` historical replay remains green.
-2. Confirmed accounting, positivity, and depreciation corrections have direct tests.
-3. Destination/global-lowest behavior has a source-conformity test.
-4. Warm-start, shadow continuation, epsilon, threshold, horizon, and blocked-destination policies are emitted as provenance rather than hidden defaults.
-5. C26 has an explicit adjudication and test.
-6. The full csvplan test suite and numerical comparison workflows pass.
+2. The reference reconciled module implements this specification rather than the older provisional `faithful.py` controller.
+3. Provenance fields for warm start, continuation, epsilon, threshold, max iterations, horizon, C26 and blocked-destination policy are machine-visible.
+4. Direct tests cover vector accounting, all-product robust Harmony, candidate positivity, exact depreciation and global-lowest destination.
+5. C26 stock-proportional retention has a regression/oracle test and experimental alternatives remain separate.
+6. The full unit-test and numerical-comparison workflows pass from the final reference-reconciled commit.
 
-Only after this gate may the reconciled controller be ported into E. F remains downstream of the regenerated E baseline.
+Only after this gate may the reference controller be ported into E. F remains downstream of the regenerated E baseline.
