@@ -1,0 +1,28 @@
+name: csvplan residual code-only audit
+
+on:
+  push:
+    branches: [csvplan-faithful-work]
+  workflow_dispatch:
+
+jobs:
+  residual-code-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Run residual code-only audit
+        run: python scripts/run_csvplan_residual_code_only_audit.py
+      - name: Run csvplan tests
+        run: python -m unittest discover -s tests -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csvplan-residual-code-only-audit
+          path: comparison/residual_code_only/
+          if-no-files-found: error

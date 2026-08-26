@@ -1,0 +1,67 @@
+name: Numerical comparison faithful legacy Julia
+
+on:
+  push:
+    branches: [csvplan-faithful-work]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run faithful versus legacy numerical trace
+        run: python scripts/run_numerical_comparison.py
+
+      - name: Download Cockshott SourceForge originals
+        shell: bash
+        run: |
+          mkdir -p sourceforge
+          for f in csvplan.jl jeuflows.csv jeucap.csv jeudep.csv jeulabtargs.csv; do
+            curl -L --fail --retry 4 --retry-delay 2 \
+              "https://sourceforge.net/projects/newharmony-with-julia/files/${f}/download" \
+              -o "sourceforge/${f}"
+          done
+          wc -c sourceforge/*
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: Instrument original csvplan.jl
+        run: python scripts/instrument_julia.py
+
+      - name: Run original Cockshott csvplan.jl
+        shell: bash
+        run: |
+          cd sourceforge
+          julia csvplan.jl > julia_output.txt
+          grep '^TRACE_' julia_output.txt | head -n 10 || true
+          grep '^TRACE_' julia_output.txt | tail -n 10 || true
+
+      - name: Compare Julia original with Python legacy replay
+        run: python scripts/compare_julia_legacy.py
+
+      - name: Run test suite
+        run: python -m unittest discover -s tests -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csvplan-numerical-comparison
+          path: |
+            comparison/
+            sourceforge/julia_output.txt
+          if-no-files-found: error
