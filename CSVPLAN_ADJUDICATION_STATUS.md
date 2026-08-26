@@ -1,142 +1,200 @@
 # csvplan adjudication status
 
-## Purpose
+## Purpose and current state
 
-This file consolidates the audit after the source/code matrix, Stage A, Stage B, and the isolated depreciation-timing tests. It supersedes the preliminary labels in `CSVPLAN_RECONCILIATION_MATRIX.md` where the two differ.
+This file consolidates the source/code audit after the reconciliation matrix, Stage A, Stage B, the depreciation-timing audit, the P0-P4 composite audit, the residual code-only audit, and the warm-start decoupling audit.
 
-The historical reference remains Paul Cockshott's original `csvplan.jl`. `legacy.py` is its verified numerical replay. No combined alternative is yet canonical.
+Paul Cockshott's original `csvplan.jl` remains the immutable historical prototype sample. `legacy.py` remains its verified numerical replay. No replacement solver is yet designated canonical. The experimental module currently named `faithful.py` must continue to be treated as a reconstruction under audit until the remaining indeterminate controller issue C26 and the initialization policy are resolved.
 
-## 1. Programming defects now supported by both semantics and local code structure
+The detailed disposition of residual executable choices is in `CSVPLAN_RESIDUAL_CODE_ONLY_ADJUDICATION.md`.
 
-### C13: investment subtraction uses scalar linear indexing
+## 1. Confirmed implementation defects
 
-`investmentsByTypeandYear` explicitly returns a matrix `[year, sourceindustry]`. In `update_outputs`, the same matrix is added to the target row correctly as a vector, but net output is then computed with:
+### C13: scalar linear indexing in investment subtraction
 
-`finaloutput[i] .- investmentsbytype[i]`
-
-On a Julia matrix, one-index access is linear indexing, so `investmentsbytype[i]` is a scalar, not the year-`i` commodity vector. Broadcasting subtracts that scalar from every product in `finaloutput[i]`.
-
-The model statement is vector-valued final output: output less accumulation and productive consumption. The source-year example likewise says allocating one van to accumulation lowers current final van consumption by one, not every product by the same scalar.
+`investmentsByTypeandYear` returns a matrix `[year, sourceindustry]`, but the historical net-output update indexes it with one Julia index and broadcasts the resulting scalar over the product vector. The textual model defines vector-valued final consumption as output less accumulation and productive consumption.
 
 **Status: CONFIRMED INDEXING DEFECT.**
 
-Stage A1 shows that fixing it has a large numerical effect but creates a performance trade-off: lower mean Harmony, lower CV, and higher worst-year Harmony. Numerical performance is therefore not the reason for the correction; dimensional and model consistency are.
+### C02/C28: an actual product is dropped from annual robust Harmony
 
-### C02/C28: an actual product is dropped from robust annual Harmony
-
-`update_outputs` and the fulfilment-ratio calculation have already removed the labour column by using `1:end-1`. `harmonyarrayofarrays[i]` therefore contains product Harmonies only. The subsequent slice
-
-`harmonyarrayofarrays[i][1:end-1]`
-
-removes one additional element, despite the adjacent comment saying it is done to ignore labour.
+The labour column has already been removed before `harmonyarrayofarrays[i][1:end-1]` is evaluated. The extra slice therefore removes a product despite the adjacent comment saying that labour is being ignored.
 
 **Status: CONFIRMED INDEXING DEFECT.**
-
-On the EU demonstration data the omitted last product never becomes the binding minimum, so Stage A2 is numerically identical to the historical run. This makes the correction especially safe to identify: source semantics change, published demo results do not.
 
 ### C12: positivity is tested on the pre-transfer scenario
 
-The text says a proposed investment must not be allowed if it **would result in** negative net products in the source year. The matrix prototype constructs `newscenario` and computes its gain, but tests positivity on `s.netoutputs[y]`, the old scenario.
+The text requires rejection of a proposed investment if the proposal would produce negative net goods in the source year. The matrix code builds a candidate scenario but tests the old scenario.
 
 **Status: CONFIRMED WRONG-OBJECT CHECK.**
 
-Stage A3 is numerically inert on the EU demonstration dataset, so the historical example does not exercise the defect.
-
-## 2. Direct text/code conflicts that are not automatically programming defects
-
-### C05: destination-year rule
-
-Design, Chapter 6, and scalar `harmony2.jl` all use the year with the lowest Harmony. `csvplan.jl` contains a function implementing that rule, but its active call is commented out and the live controller instead scans years sequentially, correcting each year whose Harmony is below the current mean.
-
-**Status: DIRECT TEXT/CODE CONFLICT.**
-
-Stage B2 gives additional evidence: global-lowest strictly dominates the active matrix scan on mean Harmony, CV, and worst-year Harmony. This strengthens the case for the textual rule but does not turn performance into authorship evidence.
-
-A standalone operational source previously referred to as `Using csvplan.jl` is not present in the current searchable/uploaded audit bundle. If recovered, it may show that the sequential matrix scan was a deliberate later operational revision. Until then the conflict remains open at the historical-intent level.
-
-### C11a: source-to-destination depreciation compensation disabled
-
-The text explicitly requires earlier investment to arrive at the destination as depreciated capital. Scalar `harmony2.jl` inverse-depreciates the source investment. Matrix `csvplan.jl` contains an inverse-depreciation function but sets `inversedepreciateinvestments=false`.
-
-**Status: DIRECT TEXT/CODE CONFLICT.**
-
-Stage A4 / D1 show a large numerical effect when the dormant matrix path is enabled. The default-off flag could represent an unfinished or experimental switch, so the audit distinguishes conflict from accidental coding error.
-
 ### C11b/C16: depreciation timing
 
-The stated stock recurrence makes investment produced in year `t` available in `t+1`; later stock dates should then contain the surviving amount after the corresponding number of full depreciation periods. The matrix recursive helper leaves amounts unchanged for an extra period relative to that chronology. Its latent inverse-depreciation call has the analogous off-by-one issue.
+The stated stock recurrence makes investment produced in year `t` available in `t+1`; later stocks contain the amount surviving the corresponding full depreciation periods. The historical helper leaves the amount unchanged for one extra period and the latent inverse-depreciation path has the analogous offset.
 
-**Status: TIME-INDEXING CONFLICT; HIGH-CONFIDENCE IMPLEMENTATION DEFECT, but kept separate from C11a.**
+**Status: HIGH-CONFIDENCE TIME-INDEXING DEFECT.**
 
-The isolated depreciation audit shows that correcting timing does not improve all Harmony statistics. The justification is the temporal accounting identity, not ex post performance.
+The justification is the stock identity, not ex post Harmony performance.
 
-## 3. Code-only choices that must not be called defects without more evidence
+## 2. Direct text/code conflicts
+
+### C05: destination year
+
+Design, Chapter 6, and scalar `harmony2.jl` select the year with the **lowest Harmony**. Matrix `csvplan.jl` contains such a function but the active loop instead scans sequentially and acts on every year below the current mean.
+
+**Status: DIRECT TEXT/CODE CONFLICT.**
+
+The one-factor audit additionally found that global-lowest strictly dominates the active historical matrix scan on the demonstration data. In the cumulative P3 reconstruction it is also the major positive interaction: P3 reaches mean H `0.498578600`, CV `0.037022495`, and minimum H `0.433778848`, all better than the historical baseline.
+
+For the source-reconciled core, the explicit textual rule prevails: **global lowest Harmony**.
+
+### C11a: source-to-destination depreciation disabled
+
+Design and Chapter 6 explicitly require earlier investment to arrive at the destination depreciated. Scalar `harmony2.jl` implements inverse depreciation. Matrix `csvplan.jl` defines the helper but disables it by default.
+
+**Status: DIRECT TEXT/CODE CONFLICT.**
+
+For the source-reconciled core, exact depreciation consistent with the stock recurrence prevails. The disabled historical flag remains part of replay only.
+
+## 3. Residual code-only choices now adjudicated
 
 ### C14: preliminary 70% replacement schedule
 
-`initialinvestmentlevel=0.7` preassigns 70% of `caps .* dep` in every nonterminal computational year before the iterative controller starts. The currently available nine-step textual procedure does not state this initialization.
+`initialinvestmentlevel=0.7` preassigns 70% of `caps .* dep` before the iterative search. The available nine-step textual algorithm does not state this initialization. Chapter 6 instead starts from depreciated initial stocks and schedules investment endogenously in Step 8.
 
-**Status: CODE-ONLY INITIALISATION, NOT A BUG FINDING.**
+The residual sweep and warm-start decoupling audit resolve its operational role:
 
-Stage B1 shows that simply removing it while leaving the historical controller unchanged is catastrophic on the demonstration problem: mean Harmony falls to about 0.244, CV rises above 0.60, and worst-year Harmony falls to about 0.042. This shows that the historical controller relies heavily on the initialization. It does not show that 70% is theoretically required.
+- zero preload does not allow the current local controller to bootstrap to a comparable full-horizon solution;
+- the final state changes strongly with preload level even after exact preliminary timing, ranked fallback, and a mandatory search pass;
+- 0.70 is neither numerically unique nor dominant;
+- high preload can itself trigger the CV stopping rule after zero or one endogenous move;
+- applying the preload only to published years performs much worse, while shadow-only preload can generate physical pathologies.
 
-### C24: terminate after the first failed below-mean destination
+**Status: CODE-ONLY STRUCTURAL WARM START / FINITE-HORIZON BOUNDARY CONDITION. THE VALUE 0.70 IS NOT A THEORETICAL CONSTANT.**
 
-The active matrix loop stops the whole search when the current destination has no source year with positive overall-Harmony gain. The verified nine-step text does not state this global stopping rule.
+Historical replay keeps 0.70 exactly. A reconciled reconstruction must expose the warm start and its provenance. If a nonzero warm start is used, its stock propagation must follow the exact recurrence. No alternative fixed percentage is promoted to canonical status by the performance sweep.
 
-**Status: CODE-ONLY STOPPING RULE.**
+An endogenous initializer would be a new reconstruction subproblem, not a recovered Cockshott rule.
 
-Stage B4 continues scanning other below-mean destinations and strictly dominates the historical stop rule on all three agreed performance measures. Because the text does not explicitly prescribe the alternative either, the result is evidence about performance, not proof of authorial intent.
+### C21: continuation targets and labour
 
-### C07: epsilon value
+The finite-horizon extension is source-supported, including the Chapter 6 example of optimising a five-year published plan over nineteen years when the industrial capital horizon is fourteen years. The rule by which every shadow target and labour row is generated is not uniquely stated in the verified passage. `csvplan.jl` repeats the last explicit row.
 
-Matrix `csvplan.jl` uses `0.25/depreciationhorizon = 1/56` for horizon 14. The text gives `1/(1+1/Delta)`, equivalent to `1/15` for a 14-year depreciation horizon, only **as a first suggestion** to avoid oscillation. Scalar `harmony2.jl` uses yet another operational scaling.
+±10% shadow-only perturbations materially change full-horizon and published-horizon results.
 
-**Status: TUNING / TEXTUAL VARIANT, NOT A DEFECT.**
+**Status: CODE-ONLY BOUNDARY-CONDITION POLICY.**
 
-Stage B3 shows that the printed first-suggestion value strictly dominates the matrix default on the EU demonstration run, but that does not convert a suggested tuning rule into a mandatory invariant.
+Historical replay uses `repeat_last`. A reconciled implementation must expose continuation policy explicitly; `repeat_last` can be a reproducibility option but must not be called a theoretical invariant.
 
-## 4. Choices that currently look like legitimate implementation specialisations
+### C23/C24: termination after a blocked destination
 
-- fixed 14-year computational extension for the demonstration, with reporting restricted to the original plan horizon;
-- Leontief inversion within each year;
-- cell-specific capital constraints followed by labour constraint;
-- search over all preceding source years and selection of the source with greatest positive total/mean-Harmony gain;
-- direct candidate-scenario re-evaluation of source cost instead of the cheaper labour-value approximation discussed in the Design;
-- fixed `A` over the plan horizon in the demonstration.
+The historical matrix controller terminates globally when the current destination has no preceding source with positive overall-Harmony gain. A ranked-fallback audit finds another positive move after the globally worst year becomes blocked. The numerical difference is small, but the logical point is decisive: failure at one destination does not prove global local optimality.
 
-These may be parameterised in a general implementation without being described as corrections to Cockshott.
+**Status: CODE-ONLY STOPPING SPECIALISATION.**
 
-## 5. Source gap clarified
+Historical replay keeps first-blocked termination. A reconciled controller may use an ordered full-pass certificate: try destinations in ascending Harmony order and stop only if the full pass finds no improving move. That completion rule is explicitly **OUR CHOICE**, not attributed to Cockshott.
 
-The public SourceForge project contains a 223-byte `readme.txt`. That readme merely states that the theoretical description is in `newharmony.pdf`, announces a future video, and points to Cockshott's YouTube channel. It is **not** the detailed operational document previously referred to in project discussion as `Using csvplan.jl`.
+### C29: CV threshold and maximum iteration count
 
-Therefore no remembered statement from that missing operational document is currently used to override a conflict found in the primary code, Design, Chapter 6, or scalar Julia witness.
+Matrix `csvplan.jl` uses `.034` and `3000`; the verified text says only “some threshold” and does not provide universal matrix constants. The audit shows that CV can materially change the endpoint and that `maxiter` is a computational safeguard which becomes binding in difficult preload regimes.
 
-## 6. Current performance evidence
+**Status: CODE-ONLY PARAMETERISATION.**
 
-Historical baseline:
+Expose both. Historical replay uses `.034/3000`; no general implementation may describe those numbers as theoretical constants.
+
+### C07: epsilon
+
+Matrix `csvplan.jl` uses `.25/depreciationhorizon`. The text gives `1/(1+1/Delta)` only as a first suggestion and Cockshott's executable witnesses use different operational scalings. The first-suggestion value improves the historical baseline in isolation but worsens P3 on mean/CV when added cumulatively.
+
+**Status: TUNING PARAMETER / TEXTUAL VARIANT.**
+
+Expose epsilon. Preserve the matrix value as a historical preset and the printed formula as a separately named textual-suggestion preset.
+
+### C22: depreciation horizon 14
+
+Chapter 6 uses a fourteen-year industrial-capital horizon in its finite-horizon example, while the code itself comments that fourteen is hoped to be long enough. Actual depreciation remains cell-specific.
+
+**Status: DEMONSTRATION PARAMETER / IMPLEMENTATION SPECIALISATION.**
+
+Expose the computational horizon. Fourteen is a reproducible example value, not a universal depreciation law.
+
+## 4. Source-supported / legitimate implementation specialisations
+
+The following remain admissible without being described as bug corrections:
+
+- fractional Harmony `H(x)=x/(1.1+x)`;
+- robust annual Harmony as the minimum per-product Harmony over final goods with positive targets;
+- Leontief inversion within a year;
+- cell-specific capital feasibility followed by labour feasibility;
+- source years restricted to dates preceding the destination;
+- selection of the source by greatest positive total/mean-Harmony gain in the matrix path;
+- full candidate-scenario re-evaluation rather than the cheaper labour-value approximation discussed in Design;
+- fixed `A` over the demonstration horizon, with time-varying technology recognized as a possible extension;
+- a computational horizon extending past the published plan so terminal investment is not artificially discouraged.
+
+## 5. Performance checkpoints
+
+Historical `csvplan.jl` / `legacy.py` baseline:
 
 - mean H `0.483594243`
 - CV `0.048835808`
 - min H `0.402582327`
+- 331 accepted moves
+- stop: no positive transfer.
 
-Strictly dominant one-factor variants found so far:
+Cumulative source-reconciled P3, retaining the 70% historical preload and matrix epsilon during the interaction audit:
 
-- C05 global-lowest: mean `0.486871678`, CV `0.039509576`, min `0.423877515`;
-- C07 first-suggestion epsilon: mean `0.485050728`, CV `0.047869145`, min `0.407269780`;
-- C24 continue after failed destination: mean `0.486798259`, CV `0.041187874`, min `0.423902422`.
+- mean H `0.498578600`
+- CV `0.037022495`
+- min H `0.433778848`.
 
-These three performance findings have different epistemic status: C05 also has strong direct textual support; C07 is explicitly only a suggested tuning rule; C24 remains code-only versus an alternative not uniquely prescribed in the text.
+P3 strictly dominates the historical baseline on all three agreed metrics. This is performance evidence, not by itself authorship evidence. Its substantive changes are independently justified by the source/code adjudication.
 
-## 7. Next checkpoint
+The C14 sweep confirms that this P3 endpoint remains preload-dependent. Under historical preliminary timing, 0.80 gives mean H `0.500223`, CV `0.035534`, min H `0.442186`, which strictly dominates 0.70. This does **not** justify changing the historical or theoretical default to 0.80; it proves that 0.70 is not an identified optimum.
 
-Before building a combined candidate implementation, run a staged interaction audit:
+Under the warm-start decoupling audit, with exact preliminary timing, ranked fallback and one mandatory search pass, 0.90 gives the best tested mean H `0.498483`, whereas 1.20 gives the best tested CV `0.025040` and minimum H `0.450413`, but after only one endogenous move. This further demonstrates that preload and convergence are structurally entangled.
 
-1. confirmed indexing/constraint defects only: C13 + C02 + C12;
-2. add internally consistent source-to-destination depreciation: C11a + C11b + C16;
-3. add the text-supported global-lowest destination rule C05;
-4. keep C14 at 70%, historical epsilon, and historical stop semantics at this checkpoint because their authorial status remains ambiguous;
-5. only afterward test optional tuning variants C07 and C24 on top of the source-admissible composite.
+All audit workflows reported here completed successfully and the repository's 18-test suite passed after the residual and warm-start audits.
 
-The purpose of this staged audit is to identify interaction effects without silently converting ambiguous implementation choices into 'corrections'.
+## 6. Profiles fixed by the adjudication
+
+### Historical replay
+
+Use `legacy.py` and preserve:
+
+- 0.70 preliminary replacement;
+- historical preliminary propagation;
+- repeat-last shadow continuation;
+- historical active destination/stop controller;
+- epsilon `.25/H`;
+- `.034/3000` stopping parameters;
+- legacy quirks required for numerical replay.
+
+### Reconciled reconstruction
+
+The source-supported core is now:
+
+- vector-correct investment accounting;
+- all-product robust annual Harmony;
+- post-candidate non-negativity;
+- exact capital-stock/depreciation timing;
+- global-lowest destination;
+- positive total-Harmony improvement for accepted moves.
+
+The following must remain provenance-labelled parameters or completion policies rather than inferred Cockshott constants:
+
+- warm-start/preliminary investment;
+- shadow continuation;
+- epsilon;
+- CV threshold;
+- maximum iterations;
+- depreciation horizon;
+- full-pass fallback after a blocked destination.
+
+## 7. Remaining open item before a final reconciled solver
+
+The main unresolved core-controller item is **C26**: the multi-good formula for translating the desired move toward mean Harmony into an additional-capital matrix. The historical matrix uses `current_stock * scale_increment`. The verified text specifies the economic requirement but does not print a unique matrix update formula. Replacing the Julia expression with `C * target_gross - current_stock`, or another construction, would presently be a reconstruction choice rather than a source correction.
+
+The second unresolved engineering item is endogenous initialization. The residual audit has resolved the epistemic status of 70%, but it has also shown that the current local search cannot simply start from zero and be assumed equivalent. If we want a reconciled solver with no arbitrary fixed preload, we must design and audit a separate feasible initialization procedure.
+
+Until those two issues are addressed, `faithful.py` remains experimental and E/F remain frozen.
