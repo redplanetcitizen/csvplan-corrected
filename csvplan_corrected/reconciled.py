@@ -15,10 +15,11 @@ as machine-visible provenance rather than silently attributed to Cockshott.
 
 The default *reference demonstration* deliberately retains the historical 70%
 preliminary replacement schedule, matrix epsilon, repeat-last shadow policy,
-C26 stock-proportional capital update, and first-blocked stopping rule.  Their
-presence is for reproducibility and to avoid introducing a new initializer or
-capital rule; none of those numerical choices is treated as a theoretical
-constant.
+C26 stock-proportional capital update, and first-blocked stopping rule.  The
+repeat-last continuation and its 14-year default are explicitly documented in
+Cockshott's Appendix A; the other retained specializations remain identified
+as code-witnessed or formalized choices.  No numerical default is treated as a
+theoretical New Harmony constant.
 """
 from __future__ import annotations
 
@@ -65,9 +66,9 @@ class ReconciledConfig:
     verbose: bool = False
 
     def validate(self) -> None:
-        # The packaged legacy reader currently constructs exactly the historical
-        # 14-year shadow window.  The value is surfaced here rather than hidden;
-        # alternate horizons require a future reader-level implementation.
+        # The packaged legacy reader currently constructs exactly the documented
+        # 14-year default shadow window.  The value is surfaced here rather than
+        # hidden; alternate horizons require a future reader-level implementation.
         if self.depreciation_horizon != legacy.DEPRECIATION_HORIZON:
             raise NotImplementedError(
                 "the reference reader currently supports only the audited "
@@ -118,7 +119,7 @@ class ReconciledConfig:
             "warm_start_source_status": "code_only_boundary_condition",
             "warm_start_stock_timing": "exact_recurrence",
             "continuation_policy": self.continuation_policy,
-            "continuation_source_status": "code_only_boundary_condition",
+            "continuation_source_status": "explicit_text_rule",
             "epsilon_policy": self.epsilon_policy,
             "epsilon": float(eps),
             "epsilon_source_status": (
@@ -133,18 +134,20 @@ class ReconciledConfig:
             "max_iterations": int(self.max_iterations),
             "max_iterations_source_status": "computational_safeguard",
             "depreciation_horizon": int(self.depreciation_horizon),
-            "depreciation_horizon_source_status": "demonstration_parameter",
+            "depreciation_horizon_source_status": "explicit_text_default_parameter",
             "capital_update_policy": self.capital_update_policy,
             "capital_update_source_status": "historical_matrix_specialization",
             "blocked_destination_policy": self.blocked_destination_policy,
             "blocked_destination_source_status": (
                 "historical_matrix_specialization"
                 if self.blocked_destination_policy == "historical_first_blocked"
-                else "our_choice_completion_rule"
+                else "text_supported_completion_rule"
             ),
             "destination_policy": "global_lowest_harmony",
-            "destination_source_status": "explicit_text_rule",
+            "destination_source_status": "textual_conflict_formalized_choice",
             "source_selection_policy": "best_positive_mean_harmony_gain",
+            "source_selection_source_status": "explicit_text_rule",
+            "no_transfer_termination_source_status": "explicit_text_rule",
             "depreciation_timing": "exact_stock_recurrence",
             "candidate_positivity": "post_candidate_nonnegative_all_products",
             "robust_harmony": "minimum_all_positive_target_products",
