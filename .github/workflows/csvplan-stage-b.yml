@@ -22,7 +22,7 @@ jobs:
           python -m pip install -e .
 
       - name: Run one-factor Stage B audit
-        run: python scripts/run_csvplan_stage_b.py
+        run: python scripts/run_csvplan_stage_b_v2.py
 
       - name: Run csvplan tests
         run: python -m unittest discover -s tests -v
